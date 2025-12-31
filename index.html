@@ -181,11 +181,23 @@ function saveOrders() {
 // RENDER TABLE
 function renderOrders() {
   table.innerHTML = "";
+
+  // --- SUMMARY TOTALS FOR ALL ORDERS (ignore search/filter) ---
   let totalBadges = 0, totalPayment = 0, completedCount = 0;
+  orders.forEach(o => {
+    totalBadges += parseInt(o.badges) || 0;
+    if(o.paid==="Yes") totalPayment += (o.badges*0.5 + (o.additionalPayment || 0));
+    if(o.status==="Completed") completedCount++;
+  });
+  totalBadgesEl.textContent = totalBadges;
+  totalPaymentEl.textContent = totalPayment.toFixed(2);
+  completedOrdersEl.textContent = completedCount;
+
+  // --- DISPLAY ORDERS WITH FILTERS/SEARCH ---
   const today = new Date().toISOString().split("T")[0];
 
   orders.forEach((o, i) => {
-    // Show all orders if "All Statuses" is selected
+    // Status filter only if not "All"
     if(statusFilter.value !== "All" && o.status !== statusFilter.value) return;
 
     if(paymentFilter !== "All" && o.paid !== paymentFilter) return;
@@ -228,15 +240,7 @@ function renderOrders() {
     });
 
     table.appendChild(tr);
-
-    totalBadges += parseInt(o.badges) || 0;
-    if(o.paid==="Yes") totalPayment += (o.badges*0.5 + (o.additionalPayment || 0));
-    if(o.status==="Completed") completedCount++;
   });
-
-  totalBadgesEl.textContent = totalBadges;
-  totalPaymentEl.textContent = totalPayment.toFixed(2);
-  completedOrdersEl.textContent = completedCount;
 }
 
 // FORM SUBMIT
