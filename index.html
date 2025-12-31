@@ -175,7 +175,7 @@ function saveOrders() {
   localStorage.setItem("sewingOrders", JSON.stringify(orders));
 }
 
-// RENDER TABLE
+// RENDER TABLE WITH DYNAMIC EVENT LISTENERS
 function renderOrders() {
   table.innerHTML = "";
   let totalBadges = 0, totalPayment = 0, completedCount = 0;
@@ -190,16 +190,30 @@ function renderOrders() {
     const overdue = o.collection && o.collection < today && o.status!=="Completed";
     const unpaid = o.paid==="No";
 
-    table.innerHTML += `
-      <tr class="${overdue?"overdue":""} ${unpaid?"unpaid":""}">
-        <td contenteditable="true" onblur="updateOrder(${i},'name',this.textContent)">${o.name}</td>
-        <td contenteditable="true" onblur="updateOrder(${i},'badges',this.textContent);updatePayment(${i})">${o.badges}</td>
-        <td>£${(o.badges*0.5).toFixed(2)}</td>
-        <td contenteditable="true" onblur="updateOrder(${i},'dropoff',this.textContent)">${o.dropoff||""}</td>
-        <td contenteditable="true" onblur="updateOrder(${i},'collection',this.textContent)">${o.collection||""}</td>
-        <td contenteditable="true" onblur="updateOrder(${i},'status',this.textContent)">${o.status}</td>
-        <td contenteditable="true" onblur="updateOrder(${i},'paid',this.textContent)">${o.paid==="Yes"?"Yes":"No"}</td>
-      </tr>`;
+    const tr = document.createElement("tr");
+    if(overdue) tr.classList.add("overdue");
+    if(unpaid) tr.classList.add("unpaid");
+
+    const fields = ["name","badges","payment","dropoff","collection","status","paid"];
+    fields.forEach(field => {
+      const td = document.createElement("td");
+      if(field === "payment") {
+        td.textContent = `£${(o.badges*0.5).toFixed(2)}`;
+      } else {
+        td.textContent = o[field] || "";
+        td.contentEditable = true;
+        td.addEventListener("blur", () => {
+          if(field==="badges") o[field] = parseInt(td.textContent)||0;
+          else o[field] = td.textContent;
+          if(field==="badges") o.payment = `£${(o.badges*0.5).toFixed(2)}`;
+          saveOrders();
+          renderOrders();
+        });
+      }
+      tr.appendChild(td);
+    });
+
+    table.appendChild(tr);
 
     totalBadges += parseInt(o.badges) || 0;
     if(o.paid==="Yes") totalPayment += (o.badges*0.5);
@@ -209,20 +223,6 @@ function renderOrders() {
   totalBadgesEl.textContent = totalBadges;
   totalPaymentEl.textContent = totalPayment.toFixed(2);
   completedOrdersEl.textContent = completedCount;
-}
-
-// INLINE EDITING
-function updateOrder(i,field,value){
-  if(field==="badges") value = parseInt(value)||0;
-  orders[i][field] = value;
-  saveOrders();
-  renderOrders();
-}
-
-function updatePayment(i){
-  orders[i].payment = `£${(orders[i].badges*0.5).toFixed(2)}`;
-  saveOrders();
-  renderOrders();
 }
 
 // FORM SUBMIT
@@ -253,3 +253,5 @@ function setPaymentFilter(value){ paymentFilter=value; renderOrders(); }
 </script>
 </body>
 </html>
+
+
