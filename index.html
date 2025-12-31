@@ -14,7 +14,7 @@ button { cursor:pointer; border:none; border-radius:6px; }
 button.save { background:#6b3fa0; color:white; padding:8px 12px; }
 .logout { background:#555; color:white; padding:6px 10px; border-radius:4px; }
 
-form { background:white; padding:15px; border-radius:8px; margin-bottom:15px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; }
+form { background:white; padding:15px; border-radius:8px; margin-bottom:15px; display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
 form input, form select, form button { padding:8px; }
 
 .filters { display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
@@ -76,6 +76,7 @@ td[contenteditable="true"] { background:#f9f9f9; }
     <input type="text" id="name" placeholder="Customer Name" required>
     <input type="number" id="badges" placeholder="Number of badges" required>
     <input type="text" id="payment" placeholder="Minimum Payment (£)" readonly>
+    <input type="number" id="additionalPayment" placeholder="Additional Payment (£)">
     <input type="date" id="dropoff">
     <input type="date" id="collection">
     <select id="status">
@@ -97,6 +98,7 @@ td[contenteditable="true"] { background:#f9f9f9; }
         <th>Name</th>
         <th>Badges</th>
         <th>Min Payment</th>
+        <th>Additional Payment</th>
         <th>Drop-off</th>
         <th>Collection</th>
         <th>Status</th>
@@ -127,6 +129,7 @@ const form = document.getElementById("orderForm");
 const nameInput = document.getElementById("name");
 const badgesInput = document.getElementById("badges");
 const paymentInput = document.getElementById("payment");
+const additionalPaymentInput = document.getElementById("additionalPayment");
 const dropoffInput = document.getElementById("dropoff");
 const collectionInput = document.getElementById("collection");
 const statusInput = document.getElementById("status");
@@ -138,7 +141,7 @@ const statusFilter = document.getElementById("statusFilter");
 
 let orders = JSON.parse(localStorage.getItem("sewingOrders")) || [];
 let editIndex = null;
-let paymentFilter = "All";
+let paymentFilter = "All"; // default: show all orders
 
 // LOGIN HANDLERS
 loginBtn.addEventListener("click", () => {
@@ -175,13 +178,14 @@ function saveOrders() {
   localStorage.setItem("sewingOrders", JSON.stringify(orders));
 }
 
-// RENDER TABLE WITH DYNAMIC EVENT LISTENERS
+// RENDER TABLE
 function renderOrders() {
   table.innerHTML = "";
   let totalBadges = 0, totalPayment = 0, completedCount = 0;
   const today = new Date().toISOString().split("T")[0];
 
   orders.forEach((o, i) => {
+    // Always show all orders unless filtered
     if((statusFilter.value!=="All" && o.status!==statusFilter.value) ||
        (paymentFilter!=="All" && o.paid!==paymentFilter) ||
        (!o.name.toLowerCase().includes(searchInput.value.toLowerCase()) &&
@@ -194,11 +198,19 @@ function renderOrders() {
     if(overdue) tr.classList.add("overdue");
     if(unpaid) tr.classList.add("unpaid");
 
-    const fields = ["name","badges","payment","dropoff","collection","status","paid"];
+    const fields = ["name","badges","payment","additionalPayment","dropoff","collection","status","paid"];
     fields.forEach(field => {
       const td = document.createElement("td");
       if(field === "payment") {
         td.textContent = `£${(o.badges*0.5).toFixed(2)}`;
+      } else if(field === "additionalPayment") {
+        td.textContent = o[field] || 0;
+        td.contentEditable = true;
+        td.addEventListener("blur", () => {
+          o[field] = parseFloat(td.textContent) || 0;
+          saveOrders();
+          renderOrders();
+        });
       } else {
         td.textContent = o[field] || "";
         td.contentEditable = true;
@@ -216,7 +228,7 @@ function renderOrders() {
     table.appendChild(tr);
 
     totalBadges += parseInt(o.badges) || 0;
-    if(o.paid==="Yes") totalPayment += (o.badges*0.5);
+    if(o.paid==="Yes") totalPayment += (o.badges*0.5 + (o.additionalPayment || 0));
     if(o.status==="Completed") completedCount++;
   });
 
@@ -232,6 +244,7 @@ form.addEventListener("submit", e => {
     name: nameInput.value,
     badges: parseInt(badgesInput.value)||0,
     payment: `£${(badgesInput.value*0.5).toFixed(2)}`,
+    additionalPayment: parseFloat(additionalPaymentInput.value) || 0,
     dropoff: dropoffInput.value,
     collection: collectionInput.value,
     status: statusInput.value,
