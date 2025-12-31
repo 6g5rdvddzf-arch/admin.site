@@ -9,9 +9,16 @@ body { font-family: Arial, sans-serif; background: #f4f4f6; padding: 20px; }
 h1 { text-align:center; color:#4b2c6f; }
 .hidden { display:none; }
 
-.login-box { max-width:400px; margin:80px auto; background:white; padding:25px; border-radius:8px; text-align:center; }
-.login-box input, button { padding:10px; width:100%; margin-top:10px; }
+.login-box {
+  max-width:400px;
+  margin:80px auto;
+  background:white;
+  padding:25px;
+  border-radius:8px;
+  text-align:center;
+}
 
+.login-box input, button { padding:10px; width:100%; margin-top:10px; }
 button { cursor:pointer; border:none; border-radius:6px; }
 button.save { background:#6b3fa0; color:white; }
 .logout { background:#555; color:white; }
@@ -80,12 +87,12 @@ td[contenteditable="true"] { background:#f9f9f9; }
 </div>
 
 <div class="filters">
-  <input id="searchInput" placeholder="Search">
+  <input id="searchInput" placeholder="Search name or badges">
   <select id="statusFilter">
     <option value="All">All Statuses</option>
-    <option>Awaiting Drop-off</option>
-    <option>Ongoing</option>
-    <option>Completed</option>
+    <option value="Awaiting Drop-off">Awaiting Drop-off</option>
+    <option value="Ongoing">Ongoing</option>
+    <option value="Completed">Completed</option>
   </select>
   <button onclick="setPaymentFilter('All')">All Orders</button>
   <button onclick="setPaymentFilter('No')">Unpaid</button>
@@ -141,7 +148,9 @@ loginBtn.onclick = () => {
     loginScreen.classList.add("hidden");
     app.classList.remove("hidden");
     renderOrders();
-  } else loginError.textContent = "Wrong code";
+  } else {
+    loginError.textContent = "Wrong code";
+  }
 };
 
 logoutBtn.onclick = () => { sessionStorage.clear(); location.reload(); };
@@ -165,7 +174,7 @@ function saveOrders(){
 function renderOrders(){
   orderTable.innerHTML = "";
 
-  // TOTALS (ALL ORDERS)
+  // ---- TOTALS (ALWAYS ALL ORDERS) ----
   let totalBadges = 0, totalPayment = 0, completed = 0;
   orders.forEach(o => {
     totalBadges += o.badges;
@@ -179,11 +188,23 @@ function renderOrders(){
   totalPaymentEl.textContent = totalPayment.toFixed(2);
   completedOrdersEl.textContent = completed;
 
-  // DISPLAY
-  orders.forEach((o, i) => {
-    if(statusFilter.value !== "All" && o.status !== statusFilter.value) return;
+  // ---- DISPLAY ORDERS ----
+  orders.forEach(o => {
+
+    // ✅ STATUS FILTER — ONLY FILTER IF NOT "ALL"
+    if(statusFilter.value !== "All"){
+      if(o.status !== statusFilter.value) return;
+    }
+
+    // PAYMENT FILTER
     if(paymentFilter !== "All" && o.paid !== paymentFilter) return;
-    if(!o.name.toLowerCase().includes(searchInput.value.toLowerCase())) return;
+
+    // SEARCH FILTER
+    const search = searchInput.value.toLowerCase();
+    if(
+      !o.name.toLowerCase().includes(search) &&
+      !String(o.badges).includes(search)
+    ) return;
 
     const tr = document.createElement("tr");
     if(o.paid === "No") tr.classList.add("unpaid");
@@ -202,15 +223,16 @@ function renderOrders(){
     cells.forEach((val, idx) => {
       const td = document.createElement("td");
       td.textContent = val;
+
       if(idx !== 2){
         td.contentEditable = true;
         td.onblur = () => {
           let text = td.textContent.replace("£","").trim();
+          if(idx === 0) o.name = text;
           if(idx === 1) o.badges = parseInt(text)||0;
-          else if(idx === 3) o.additionalPayment = parseFloat(text)||0;
-          else if(idx === 7) o.paid = text;
-          else if(idx === 6) o.status = text;
-          else if(idx === 0) o.name = text;
+          if(idx === 3) o.additionalPayment = parseFloat(text)||0;
+          if(idx === 6) o.status = text;
+          if(idx === 7) o.paid = text;
           saveOrders();
           renderOrders();
         };
@@ -240,9 +262,9 @@ orderForm.onsubmit = e => {
 };
 
 function setPaymentFilter(v){ paymentFilter=v; renderOrders(); }
-
 searchInput.oninput = renderOrders;
 statusFilter.onchange = renderOrders;
 </script>
+
 </body>
 </html>
